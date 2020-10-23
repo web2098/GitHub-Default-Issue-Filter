@@ -4,33 +4,52 @@ import * as browser from 'webextension-polyfill';
 import helpers from '../helpers/helpers';
 
 const Popup = () => {
-  const [filter, setFilter] = React.useState('is:issue is:open');
+  const [issueFilter, setIssueFilter] = React.useState('is:issue is:open');
+  const [pullFilter, setPullFilter] = React.useState('is:pr is:open');
   const [loading, setLoading] = React.useState(true);
   const [repo, setRepo] = React.useState('');
 
   React.useEffect(() => {
     helpers.getCurrentTab().then(tab => {
       var _repo = helpers.getRepoFromUrl(tab.url);
-      browser.storage.local.get(_repo).then((item) => {
-        if(item[_repo])
+      setRepo(_repo);
+      var _issueFilter = _repo + 'issueFilter';
+      var _pullFilter = _repo + 'pullFilter';
+      browser.storage.local.get(_issueFilter).then((item) => {
+        if(item[_issueFilter])
         {
-          setFilter(decodeURIComponent(item[_repo]));
+          setIssueFilter(decodeURIComponent(item[_issueFilter]));
         }
-        setRepo(_repo);
-        setLoading(false);
       }).catch(() => {
-        setLoading(false);
-        setFilter('is:issue is:open');
+        setIssueFilter('is:issue is:open');
       });
+      browser.storage.local.get(_pullFilter).then((item) => {
+        if(item[_pullFilter])
+        {
+          setPullFilter(decodeURIComponent(item[_pullFilter]));
+        }
+      }).catch(() => {
+        setPullFilter('is:pr is:open');
+      });
+      setLoading(false);
     });
   }, []);
 
   const onSave = () => {
     helpers.getCurrentTab().then((tab) => {
       var _repo = helpers.getRepoFromUrl(tab.url);
-      var uriFilter = encodeURIComponent(filter);
-      browser.storage.local.set({[_repo]:uriFilter});
-      browser.tabs.sendMessage(tab.id, { filter: uriFilter });
+      var uriFilter = encodeURIComponent(issueFilter);
+      browser.storage.local.set({[_repo+'issueFilter']:uriFilter});
+      browser.tabs.sendMessage(tab.id, { issueFilter: uriFilter });
+    }).catch(err => console.log(err));
+  };
+
+  const onSavePullFilter = () => {
+    helpers.getCurrentTab().then((tab) => {
+      var _repo = helpers.getRepoFromUrl(tab.url);
+      var uriFilter = encodeURIComponent(pullFilter);
+      browser.storage.local.set({[_repo+'pullFilter']:uriFilter});
+      browser.tabs.sendMessage(tab.id, { pullFilter: uriFilter });      
     }).catch(err => console.log(err));
   };
 
@@ -41,12 +60,18 @@ const Popup = () => {
 
   return (
     <div className="popup">
-      <h3>GitHub Default Issue Filter</h3>
+      <h3>GitHub Default Filters</h3>
       {repo ? (
         <div>
-          <div className="text">Set default issue filter for<br /><b>{repo}</b></div>
-          <input type="text" value={filter} onChange={(ev)=>setFilter(ev.target.value)} /><br />
-          <button onClick={onSave}>Save Filter</button>
+          <h4>Repo: <b>{repo}</b> </h4>
+          <div className="text">Set default issue filter</div>
+          <input type="text" value={issueFilter} onChange={(ev)=>setIssueFilter(ev.target.value)} /><br />
+          <button onClick={onSave}>Save Issue Filter</button>
+          <br />
+          <br />
+          <div className="text">Set default pull request filter</div>
+          <input type="text" value={pullFilter} onChange={(ev)=>setPullFilter(ev.target.value)} /><br />
+          <button onClick={onSavePullFilter}>Save Pull Filter</button>
         </div>
       ) : (
         <div>
